@@ -165,3 +165,7 @@ class GanBert(tf.keras.Model):
             "generator-loss": generator_loss,
             "discriminator-loss": discriminator_loss,
         }
+
+    def predict(self, inputs):
+        bert_output = self.encoder(inputs)
+        return self.discriminator(bert_output, training=False)["probabilities"]

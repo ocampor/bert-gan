@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy
 import pandas
 import tensorflow as tf
 from official.nlp import optimization  # to create AdamW optimizer
@@ -12,7 +13,7 @@ from data import load_datasets
 import model
 
 if __name__ == "__main__":
-    DATA_PATH = Path("../data")
+    DATA_PATH = Path("data")
     data = load_datasets(DATA_PATH)
 
     X_train = data["labeled.tsv"]
@@ -20,26 +21,29 @@ if __name__ == "__main__":
     X_unlabeled = data["unlabeled.tsv"]
 
     # %%
+    def create_output_encoder(x: pandas.Series) -> LabelEncoder:
+        # The Prefix 0- forces the encoder to assign the first position to
+        #   the fake class.
+        fake_category = ["0-FAKE"]
+        categories = numpy.concatenate((fake_category, x.unique()))
+        return LabelEncoder().fit(categories)
 
-    encoder = LabelEncoder()
-    encoder.fit(X_train.category)
+    def transform_category(encoder: LabelEncoder, x: pandas.Series) -> tf.Tensor:
+        y_true = encoder.transform(x)
+        return tf.keras.utils.to_categorical(y_true)
 
-    def transform_category(x: pandas.Series) -> tf.Tensor:
-        y_true = encoder.fit_transform(x)
-        one_hot = tf.keras.utils.to_categorical(y_true)
-        return tf.concat([tf.ones((one_hot.shape[0], 1)), one_hot], axis=1)
-
+    encoder = create_output_encoder(X_train.category)
     batch_size = 32
     ds = (
         tf.data.Dataset.from_tensor_slices(
-            (X_train.message, transform_category(X_train.category))
+            (X_train.message, transform_category(encoder, X_train.category))
         )
         .shuffle(buffer_size=1024)
         .batch(batch_size)
     )
     ds_val = (
         tf.data.Dataset.from_tensor_slices(
-            (X_test.message, transform_category(X_test.category))
+            (X_test.message, transform_category(encoder, X_test.category))
         )
         .shuffle(buffer_size=1024)
         .batch(batch_size)
@@ -55,7 +59,7 @@ if __name__ == "__main__":
     )
 
     discriminator = model.DiscriminatorModel(
-        hidden_size=bert_encoder.output_size, output_size=len(classes) + 1
+        hidden_size=bert_encoder.output_size, output_size=len(classes)
     )
 
     generator = model.GeneratorModel(hidden_size=bert_encoder.output_size)
@@ -101,7 +105,6 @@ if __name__ == "__main__":
 
     # %%
 
-    encoder_output = bert_encoder(X_test.message)
-    y_pred = discriminator.predict(encoder_output)
-    y_pred = tf.argmax(y_pred["probabilities"][:, 1:], axis=-1)
+    y_pred = gan_bert.predict(X_test.message)
+    y_pred = tf.argmax(y_pred, axis=-1)
     print(classification_report(X_test.category, encoder.inverse_transform(y_pred)))
