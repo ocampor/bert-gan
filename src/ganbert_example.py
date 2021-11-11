@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # %%
 
-    epochs = 2
+    epochs = 100
     init_lr = 3e-5
     steps_per_epoch = ds.cardinality().numpy()
     num_train_steps = steps_per_epoch * epochs
@@ -101,6 +101,8 @@ if __name__ == "__main__":
 
     # %%
 
+    print(f"Training using tensorflow version: {tf.__version__}")
+    print(f"GPU: {tf.config.list_physical_devices('GPU')}")
     history = gan_bert.fit(x=ds, epochs=epochs)
 
     # %%

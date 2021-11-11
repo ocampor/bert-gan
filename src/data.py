@@ -13,8 +13,11 @@ def split_data(x: str) -> Tuple[str, str, str]:
 def parse_file(path: Path) -> Iterator[Tuple[str, str]]:
     with path.open("r") as fp:
         header = fp.readline()
-        while line := fp.readline().strip():
+
+        line = fp.readline().strip()
+        while line:
             yield split_data(line)
+            line = fp.readline().strip()
 
 
 def load_dataset(path: Path) -> pandas.DataFrame:
@@ -24,7 +27,4 @@ def load_dataset(path: Path) -> pandas.DataFrame:
 
 
 def load_datasets(path: Path) -> Dict[str, pandas.DataFrame]:
-    return {
-        path.name: load_dataset(path)
-        for path in path.glob("*.tsv")
-    }
+    return {path.name: load_dataset(path) for path in path.glob("*.tsv")}

@@ -1,12 +1,8 @@
 version: "3.6"
 
 services:
-  notebook:
-    image: tensorflow/tensorflow:2.6.0-gpu-jupyter
-    ports:
-      - 8888:8888
-    volumes:
-      - ./:/tf/notebooks
+  tensorflow:
+    image: tensorflow-gpu:2.6.0
     deploy:
       resources:
         reservations:
